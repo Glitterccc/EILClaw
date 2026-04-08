@@ -1,10 +1,11 @@
-# OpenClaw Launcher
+# EIL Claw
 
-A lean macOS menu bar launcher for OpenClaw.
+A desktop launcher for OpenClaw.
 
 ## Handoff docs
 
 - Windows development handoff: `docs/windows-codex-handoff.md`
+- Windows Codex prompt: `docs/windows-codex-prompt.md`
 
 ## What it does
 

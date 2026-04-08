@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-08
 
-This document is for the Windows-side Codex that will continue EIL Claw development after this repo is pushed to GitHub.
+This document is for the Windows-side Codex that will continue EIL Claw development after this repo is pushed to GitHub or mirrored into Gitea.
 
 ## Product goal
 
@@ -45,6 +45,84 @@ These should stay true on Windows unless there is a very strong reason to change
 - WeChat plugin is bundled with the app.
 - Chat opens in the system browser, not in a WebView.
 - Gateway restart/stop/start is owned by the launcher, not by system services.
+
+## Current desktop UI direction
+
+The user explicitly does **not** want a marketing-style splash page. The app should feel like a real desktop control console.
+
+Keep these principles:
+
+- Favor concise product UI over explanatory prose.
+- Do not render long hero copy that restates the requirement.
+- Do not put “what this app does” paragraphs on the main screen unless they are truly necessary.
+- Default to a compact control-room layout: header, status, config, actions.
+- The window should feel persistent and tool-like, not like a landing page.
+
+### What the user disliked
+
+These were specifically called out as bad and should not come back:
+
+- Large blocks of text explaining the app itself
+- Obvious “requirement text” copied into the UI
+- A white framed title strip at the top
+- Overly long “recent activity” panels that stretch the layout
+- Weak visual hierarchy and too much empty explanation space
+
+### Current visual recommendation
+
+The current preferred direction is:
+
+- Dark, glassy, slightly futuristic desktop UI
+- Strong contrast, but restrained
+- Compact modules with clear information density
+- Subtle glow/accent use rather than bright colorful gradients everywhere
+- Real desktop-app layout rather than web landing-page composition
+
+Recommended structure:
+
+1. Custom top bar / header
+2. Workspace summary
+3. Status cards
+4. Quick actions
+5. LLM configuration panel
+6. WeChat binding modal or compact status block
+
+### Copywriting rules for the main window
+
+Main-window copy should be short and operational.
+
+Good:
+
+- `Gateway running`
+- `Model configuration`
+- `Open chat`
+- `WeChat binding`
+- `Save and restart`
+
+Bad:
+
+- Big descriptive taglines
+- Narrative paragraphs about why the app exists
+- Copy that sounds like a product spec or internal note
+
+### Layout rules
+
+- Avoid very tall sections unless the content truly needs height.
+- Remove any panel that does not help users take action.
+- Prefer 2-column or dashboard-style composition over stacked essay sections.
+- Keep actions visible without scrolling on a typical laptop window.
+- Use modal space for workflows like WeChat bind instead of dedicating oversized permanent panels.
+
+### Window chrome guidance
+
+On macOS, the user preferred removing the ugly native white title strip and using a custom integrated top bar.
+
+For Windows:
+
+- Preserve the same integrated-app feel
+- But do not break standard Windows usability
+- If using a custom title bar, keep drag area, close/minimize/maximize behavior, and contrast states correct
+- If a custom title bar feels too risky, use the cleanest native title bar possible and avoid duplicating a second fake title row inside the content
 
 ## Important config behaviors
 
