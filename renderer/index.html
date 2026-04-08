@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EIL Claw</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <img class="brand-mark" src="../assets/eil-claw-logo.png" alt="EIL Claw logo" />
+        <div class="eyebrow">EIL Claw</div>
+        <h1>配置一次，打开就聊。</h1>
+        <p class="lede">
+          这个启动器会帮你写好 OpenClaw 配置、启动本地 Gateway，并直接在浏览器里打开聊天页。
+        </p>
+      </header>
+
+      <section class="panel status-panel">
+        <div class="status-row">
+          <div>
+            <div class="label">启动器状态</div>
+            <div class="value" id="stateValue">Loading…</div>
+          </div>
+          <div>
+            <div class="label">Gateway</div>
+            <div class="value" id="gatewayValue">--</div>
+          </div>
+        </div>
+        <div class="banner hidden" id="banner"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <div class="label">模型配置方式</div>
+            <div class="subtle" id="modeDescription"></div>
+          </div>
+          <select id="modeSelect" class="select"></select>
+        </div>
+
+        <form id="configForm">
+          <div class="mode-fields" data-mode="openai_compatible">
+            <label class="field">
+              <span>Base URL</span>
+              <input id="openaiBaseUrl" type="url" placeholder="https://api.openai.com/v1" />
+            </label>
+            <label class="field">
+              <span>API Key</span>
+              <input id="openaiApiKey" type="password" placeholder="sk-..." />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <input id="openaiModel" type="text" placeholder="gpt-4o-mini" />
+            </label>
+          </div>
+
+          <div class="mode-fields hidden" data-mode="minimax_bailian">
+            <div class="readonly-card">
+              <div class="label">固定 Base URL</div>
+              <div class="mono">https://dashscope.aliyuncs.com/compatible-mode/v1</div>
+            </div>
+            <label class="field">
+              <span>API Key</span>
+              <input id="bailianApiKey" type="password" placeholder="sk-..." />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <input id="bailianModel" type="text" value="MiniMax-M2.5" />
+            </label>
+          </div>
+
+          <div class="mode-fields hidden" data-mode="minimax_newapi">
+            <div class="readonly-card">
+              <div class="label">固定 Base URL</div>
+              <div class="mono">https://api2.aigcbest.top/v1</div>
+            </div>
+            <label class="field">
+              <span>API Key</span>
+              <input id="newapiApiKey" type="password" placeholder="sk-..." />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <input id="newapiModel" type="text" value="MiniMax-M2.5" placeholder="MiniMax-M2.5" />
+            </label>
+          </div>
+
+          <div class="mode-fields hidden" data-mode="advanced">
+            <label class="field">
+              <span>Provider ID</span>
+              <input id="advancedProviderId" type="text" placeholder="my-provider" />
+            </label>
+            <label class="field">
+              <span>Base URL</span>
+              <input id="advancedBaseUrl" type="url" placeholder="https://example.com/v1" />
+            </label>
+            <label class="field">
+              <span>API Key</span>
+              <input id="advancedApiKey" type="password" placeholder="sk-..." />
+            </label>
+            <label class="field">
+              <span>Model ID</span>
+              <input id="advancedModelId" type="text" placeholder="custom-model" />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="primary" type="submit" id="saveButton">保存并启动</button>
+            <button class="secondary" type="button" id="openChatButton">打开聊天</button>
+            <button class="secondary" type="button" id="weixinButton">微信绑定</button>
+            <button class="danger" type="button" id="stopButton">停止 Gateway</button>
+            <button class="secondary" type="button" id="restartButton">重启 Gateway</button>
+            <button class="danger" type="button" id="uninstallButton">卸载并清除数据</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <div class="modal-backdrop hidden" id="weixinModal">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="weixinModalTitle">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">WeChat</div>
+            <h2 id="weixinModalTitle">微信扫码绑定</h2>
+          </div>
+          <button class="icon-button" type="button" id="weixinCloseButton" aria-label="关闭微信绑定弹窗">×</button>
+        </div>
+        <div class="modal-status">
+          <div>
+            <div class="label">绑定状态</div>
+            <div class="value small" id="weixinStateValue">idle</div>
+          </div>
+          <div>
+            <div class="label">最近错误</div>
+            <div class="subtle" id="weixinErrorValue">--</div>
+          </div>
+        </div>
+        <div class="qr-shell" id="weixinQrShell">
+          <img class="qr-image hidden" id="weixinQrImage" alt="微信绑定二维码" />
+          <div class="qr-placeholder" id="weixinQrPlaceholder">点击开始绑定后，这里会显示二维码。</div>
+        </div>
+        <div class="actions modal-actions">
+          <button class="primary" type="button" id="weixinStartButton">开始绑定</button>
+          <button class="secondary" type="button" id="weixinOpenBrowserButton">在浏览器中打开</button>
+          <button class="danger" type="button" id="weixinCancelButton">取消</button>
+        </div>
+        <pre class="log-panel" id="weixinLogs"></pre>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

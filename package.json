@@ -1,0 +1,63 @@
+{
+  "name": "openclaw-launcher",
+  "version": "0.1.0",
+  "description": "EIL Claw is a minimal macOS launcher for OpenClaw",
+  "author": "Codex",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "test": "node --test tests/*.test.js",
+    "build:icons": "node scripts/generate-icons.mjs",
+    "sync:runtime": "node scripts/sync-local-runtime.mjs",
+    "build:dir": "npm run build:icons && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --arm64 && node scripts/adhoc-sign.mjs",
+    "build:mac": "npm run build:dir && node scripts/create-dmg.mjs"
+  },
+  "build": {
+    "appId": "ai.openclaw.launcher",
+    "productName": "EIL Claw",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "icon": "assets/eil-claw-logo-square.png",
+      "target": [
+        "dir"
+      ],
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "dmg": {
+      "sign": false
+    },
+    "extraResources": [
+      {
+        "from": "node-runtime",
+        "to": "node-runtime"
+      },
+      {
+        "from": "bundled-plugins",
+        "to": "bundled-plugins"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
