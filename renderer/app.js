@@ -1,25 +1,33 @@
 const MODES = {
   openai_compatible: {
     label: '通用 OpenAI 兼容',
-    description: '填写任意兼容 OpenAI 的 Base URL、API Key 和模型名。'
+    description: '自定义 Base URL、API Key 和模型名。'
   },
   minimax_bailian: {
     label: 'MiniMax / 阿里云百炼',
-    description: '自动写入适配 MiniMax 与阿里云百炼的 provider 和认证配置。'
+    description: '固定百炼地址，适配 MiniMax。'
   },
   minimax_newapi: {
     label: 'NewAPI (api2.aigcbest.top)',
-    description: '使用固定的 NewAPI 地址，可自行填写模型名。'
+    description: '固定 NewAPI 地址，可自定义模型。'
   },
   advanced: {
     label: '高级自定义',
-    description: '自行填写 provider id、模型 id 和兼容 OpenAI 的接口地址。'
+    description: '手动填写 provider、地址和模型。'
   }
 }
 
 const stateValue = document.getElementById('stateValue')
 const gatewayValue = document.getElementById('gatewayValue')
+const currentModelValue = document.getElementById('currentModelValue')
+const configModeValue = document.getElementById('configModeValue')
+const providerValue = document.getElementById('providerValue')
+const baseUrlValue = document.getElementById('baseUrlValue')
+const savedAtValue = document.getElementById('savedAtValue')
+const chatUrlValue = document.getElementById('chatUrlValue')
+const heroStateBadge = document.getElementById('heroStateBadge')
 const banner = document.getElementById('banner')
+
 const modeSelect = document.getElementById('modeSelect')
 const modeDescription = document.getElementById('modeDescription')
 const configForm = document.getElementById('configForm')
@@ -30,6 +38,11 @@ const stopButton = document.getElementById('stopButton')
 const restartButton = document.getElementById('restartButton')
 const uninstallButton = document.getElementById('uninstallButton')
 const modeSections = [...document.querySelectorAll('.mode-fields')]
+
+const weixinSummaryState = document.getElementById('weixinSummaryState')
+const weixinSummaryHint = document.getElementById('weixinSummaryHint')
+const weixinSummaryError = document.getElementById('weixinSummaryError')
+
 const weixinModal = document.getElementById('weixinModal')
 const weixinCloseButton = document.getElementById('weixinCloseButton')
 const weixinStateValue = document.getElementById('weixinStateValue')
@@ -69,6 +82,42 @@ function toDisplayText(value) {
   return DISPLAY_TEXT[value] || value || '--'
 }
 
+function getTone(value) {
+  if (['error', 'failed'].includes(value)) return 'danger'
+  if (['starting', 'stopping', 'validating', 'installing_plugin', 'waiting_scan', 'restarting_gateway'].includes(value)) return 'warning'
+  if (['stopped', 'unconfigured', 'cancelled', 'idle', '--'].includes(value)) return 'muted'
+  return ''
+}
+
+function applyTone(element, value) {
+  const tone = getTone(value)
+  if (!element) return
+  if (!tone) {
+    element.removeAttribute('data-tone')
+    return
+  }
+  element.setAttribute('data-tone', tone)
+}
+
+function formatDate(value) {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--'
+  return date.toLocaleString('zh-CN', {
+    hour12: false,
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function deriveLauncherState(nextState) {
+  if (!nextState?.hasConfig) return 'unconfigured'
+  if (nextState.runtimeStatus?.status === 'error') return 'error'
+  return 'configured'
+}
+
 function populateModes() {
   for (const [mode, meta] of Object.entries(MODES)) {
     const option = document.createElement('option')
@@ -100,12 +149,76 @@ function setBusy(isBusy, label) {
   saveButton.textContent = isBusy ? label : '保存并启动'
 }
 
+function getCurrentConfigSummary(config) {
+  const currentConfig = config || {}
+  const values = currentConfig.values || {}
+  const resolved = currentConfig.resolved || {}
+  return {
+    modeLabel: MODES[currentConfig.mode]?.label || '--',
+    model: resolved.modelId || values.model || values.modelId || '--',
+    provider: resolved.providerId || values.providerId || '--',
+    baseUrl: resolved.baseUrl || values.baseUrl || '--',
+    savedAt: formatDate(currentConfig.savedAt)
+  }
+}
+
+function renderOverview(nextState) {
+  const runtimeStatus = nextState.runtimeStatus || {}
+  const summary = getCurrentConfigSummary(nextState.currentConfig)
+  const launcherState = deriveLauncherState(nextState)
+
+  stateValue.textContent = toDisplayText(launcherState)
+  gatewayValue.textContent = toDisplayText(runtimeStatus.status || '--')
+  currentModelValue.textContent = summary.model
+  configModeValue.textContent = summary.modeLabel
+  providerValue.textContent = summary.provider
+  baseUrlValue.textContent = summary.baseUrl
+  savedAtValue.textContent = summary.savedAt
+  chatUrlValue.textContent = runtimeStatus.url || '--'
+
+  heroStateBadge.textContent = nextState.hasConfig
+    ? `Gateway ${toDisplayText(runtimeStatus.status || 'configured')}`
+    : '未配置'
+  applyTone(heroStateBadge, nextState.hasConfig ? (runtimeStatus.status || 'configured') : 'unconfigured')
+}
+
+function getWeixinSummaryText(snapshot) {
+  const state = snapshot?.state || 'idle'
+  if (state === 'waiting_scan' && snapshot.scanUrl) {
+    return '二维码已生成。'
+  }
+  if (state === 'starting' || state === 'installing_plugin') {
+    return '正在准备绑定环境。'
+  }
+  if (state === 'restarting_gateway') {
+    return '绑定完成，正在重载 Gateway。'
+  }
+  if (state === 'succeeded') {
+    return '绑定已完成。'
+  }
+  if (state === 'failed') {
+    return '绑定失败，请重试。'
+  }
+  if (state === 'cancelled') {
+    return '绑定已取消。'
+  }
+  return '未开始绑定。'
+}
+
+function renderWeixinSummary(snapshot) {
+  weixinSummaryState.textContent = toDisplayText(snapshot.state || 'idle')
+  applyTone(weixinSummaryState, snapshot.state || 'idle')
+  weixinSummaryHint.textContent = getWeixinSummaryText(snapshot)
+  weixinSummaryError.textContent = snapshot.lastError || ''
+}
+
 function openWeixinModal() {
   weixinModal.classList.remove('hidden')
 }
 
 async function closeWeixinModal() {
   if (weixinSnapshot && (
+    weixinSnapshot.state === 'installing_plugin' ||
     weixinSnapshot.state === 'starting' ||
     weixinSnapshot.state === 'waiting_scan'
   )) {
@@ -122,20 +235,22 @@ function renderWeixinSnapshot(snapshot) {
     qrDataUrl: '',
     lastError: ''
   }
+
+  renderWeixinSummary(weixinSnapshot)
+
   weixinStateValue.textContent = toDisplayText(weixinSnapshot.state || 'idle')
   weixinErrorValue.textContent = weixinSnapshot.lastError || '--'
   weixinLogs.textContent = (weixinSnapshot.logs || []).join('\n')
   weixinOpenBrowserButton.disabled = !Boolean(weixinSnapshot.scanUrl)
+
   const installRunning = (
     weixinSnapshot.state === 'installing_plugin' ||
     weixinSnapshot.state === 'starting' ||
     weixinSnapshot.state === 'waiting_scan'
   )
-  const cancellable = (
-    weixinSnapshot.state === 'starting' ||
-    weixinSnapshot.state === 'waiting_scan'
-  )
+  const cancellable = installRunning
   const busy = installRunning || weixinSnapshot.state === 'restarting_gateway'
+
   weixinStartButton.disabled = busy || !Boolean(bootstrapState?.hasConfig)
   weixinCancelButton.disabled = !cancellable
 
@@ -148,11 +263,11 @@ function renderWeixinSnapshot(snapshot) {
     weixinQrImage.classList.add('hidden')
     weixinQrPlaceholder.classList.remove('hidden')
     if (weixinSnapshot.state === 'restarting_gateway') {
-      weixinQrPlaceholder.textContent = '微信已绑定，正在让 EIL Claw 重新加载新配置...'
+      weixinQrPlaceholder.textContent = '已绑定，正在重载 Gateway。'
     } else if (busy) {
-      weixinQrPlaceholder.textContent = '正在等待插件输出扫码链接...'
+      weixinQrPlaceholder.textContent = '正在等待二维码...'
     } else {
-      weixinQrPlaceholder.textContent = '点击开始绑定后，这里会显示二维码。'
+      weixinQrPlaceholder.textContent = '开始绑定后，这里会显示二维码。'
     }
   }
 }
@@ -219,22 +334,19 @@ function collectValues() {
 function renderBootstrapState(nextState) {
   bootstrapState = nextState
   const runtimeStatus = nextState.runtimeStatus || {}
-  stateValue.textContent = nextState.hasConfig
-    ? toDisplayText(nextState.windowReason || runtimeStatus.status || 'configured')
-    : toDisplayText('unconfigured')
-  gatewayValue.textContent = toDisplayText(runtimeStatus.status || '--')
+
   fillValues(nextState.currentConfig)
+  renderOverview(nextState)
   renderWeixinSnapshot(nextState.weixinSnapshot)
   setBusy(false, '保存并启动')
 
   if (runtimeStatus.lastError) {
     showBanner(runtimeStatus.lastError, 'error')
   } else if (!nextState.hasConfig) {
-    showBanner('选择一种模型配置方式，验证通过后，启动器会自动写入 OpenClaw 配置。')
+    showBanner('尚未配置模型。')
   } else {
     showBanner('')
   }
-
 }
 
 async function refreshState() {
@@ -256,7 +368,7 @@ configForm.addEventListener('submit', async (event) => {
     await refreshState()
     return
   }
-  showBanner('配置已保存，正在打开聊天页...')
+  showBanner('配置已更新。')
   setBusy(false, '保存并启动')
   await refreshState()
 })
@@ -269,7 +381,7 @@ openChatButton.addEventListener('click', async () => {
     showBanner(result.message || '打开聊天页失败', 'error')
     return
   }
-  showBanner('聊天页已在浏览器中打开。')
+  showBanner('聊天页已打开。')
 })
 
 weixinButton.addEventListener('click', async () => {
@@ -323,7 +435,7 @@ stopButton.addEventListener('click', async () => {
     showBanner(result.message || '停止 Gateway 失败', 'error')
     return
   }
-  showBanner('Gateway 已停止，现在更适合替换或删除应用。')
+  showBanner('Gateway 已停止。')
   await refreshState()
 })
 
@@ -335,7 +447,7 @@ restartButton.addEventListener('click', async () => {
     showBanner(result.message || '重启 Gateway 失败', 'error')
     return
   }
-  showBanner('Gateway 已重启，聊天页也已重新打开。')
+  showBanner('Gateway 已重启。')
   await refreshState()
 })
 
@@ -354,6 +466,7 @@ uninstallButton.addEventListener('click', async () => {
 })
 
 modeSelect.addEventListener('change', updateModeUI)
+
 window.launcherAPI.bootstrap.onWindowContext((payload) => {
   if (payload?.action === 'weixin') {
     openWeixinModal()
@@ -362,9 +475,11 @@ window.launcherAPI.bootstrap.onWindowContext((payload) => {
     showBanner(error.message || '刷新窗口状态失败', 'error')
   })
 })
+
 window.launcherAPI.weixin.onUpdate((snapshot) => {
   renderWeixinSnapshot(snapshot)
 })
+
 window.addEventListener('beforeunload', () => {
   window.launcherAPI.removeAllListeners()
 })

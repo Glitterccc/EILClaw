@@ -7,37 +7,113 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <header class="hero">
-        <img class="brand-mark" src="../assets/eil-claw-logo.png" alt="EIL Claw logo" />
-        <div class="eyebrow">EIL Claw</div>
-        <h1>配置一次，打开就聊。</h1>
-        <p class="lede">
-          这个启动器会帮你写好 OpenClaw 配置、启动本地 Gateway，并直接在浏览器里打开聊天页。
-        </p>
-      </header>
-
-      <section class="panel status-panel">
-        <div class="status-row">
-          <div>
-            <div class="label">启动器状态</div>
-            <div class="value" id="stateValue">Loading…</div>
-          </div>
-          <div>
-            <div class="label">Gateway</div>
-            <div class="value" id="gatewayValue">--</div>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="header-brand">
+          <img class="brand-mark" src="../assets/eil-claw-logo.png" alt="EIL Claw logo" />
+          <div class="brand-copy">
+            <div class="eyebrow">EIL Claw</div>
+            <div class="app-title">Gateway Console</div>
           </div>
         </div>
-        <div class="banner hidden" id="banner"></div>
+        <div class="header-meta">
+          <div class="header-meta-item">
+            <div class="label">已保存</div>
+            <div class="header-meta-value" id="savedAtValue">--</div>
+          </div>
+          <div class="status-badge" id="heroStateBadge">Loading…</div>
+        </div>
+      </header>
+
+      <div class="banner hidden" id="banner"></div>
+
+      <section class="dashboard-grid">
+        <section class="panel summary-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow">Workspace</div>
+              <h1>本地工作台</h1>
+            </div>
+            <div class="mode-chip" id="configModeValue">--</div>
+          </div>
+
+          <div class="summary-grid">
+            <article class="info-card">
+              <div class="label">Provider</div>
+              <div class="info-value mono" id="providerValue">--</div>
+            </article>
+            <article class="info-card">
+              <div class="label">Model</div>
+              <div class="info-value mono" id="currentModelValue">--</div>
+            </article>
+            <article class="info-card">
+              <div class="label">Base URL</div>
+              <div class="info-value mono" id="baseUrlValue">--</div>
+            </article>
+            <article class="info-card">
+              <div class="label">Chat URL</div>
+              <div class="info-value mono" id="chatUrlValue">--</div>
+            </article>
+          </div>
+        </section>
+
+        <aside class="side-stack">
+          <section class="panel status-panel">
+            <div class="panel-head compact">
+              <div>
+                <div class="eyebrow">System</div>
+                <h2>状态</h2>
+              </div>
+            </div>
+            <div class="status-grid">
+              <article class="status-tile">
+                <div class="label">Launcher</div>
+                <div class="status-value" id="stateValue">Loading…</div>
+              </article>
+              <article class="status-tile">
+                <div class="label">Gateway</div>
+                <div class="status-value" id="gatewayValue">--</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel actions-panel">
+            <div class="eyebrow">Actions</div>
+            <h2>快捷操作</h2>
+            <div class="action-grid">
+              <button class="primary" type="button" id="openChatButton">打开聊天</button>
+              <button class="secondary" type="button" id="weixinButton">微信绑定</button>
+              <button class="secondary" type="button" id="restartButton">重启 Gateway</button>
+              <button class="secondary" type="button" id="stopButton">停止 Gateway</button>
+              <button class="danger action-wide" type="button" id="uninstallButton">卸载并清除数据</button>
+            </div>
+          </section>
+
+          <section class="panel weixin-summary-panel">
+            <div class="panel-head compact">
+              <div>
+                <div class="eyebrow">WeChat</div>
+                <h2>绑定状态</h2>
+              </div>
+              <div class="status-badge compact" id="weixinSummaryState">空闲</div>
+            </div>
+            <div class="summary-copy" id="weixinSummaryHint">未开始绑定。</div>
+            <div class="summary-error" id="weixinSummaryError">--</div>
+          </section>
+        </aside>
       </section>
 
-      <section class="panel">
-        <div class="section-head">
+      <section class="panel config-panel">
+        <div class="panel-head">
           <div>
-            <div class="label">模型配置方式</div>
-            <div class="subtle" id="modeDescription"></div>
+            <div class="eyebrow">LLM</div>
+            <h2>模型配置</h2>
           </div>
-          <select id="modeSelect" class="select"></select>
+          <div class="panel-head-side">
+            <div class="label">模式</div>
+            <select id="modeSelect" class="select"></select>
+            <div class="subtle mode-hint" id="modeDescription"></div>
+          </div>
         </div>
 
         <form id="configForm">
@@ -50,15 +126,15 @@
               <span>API Key</span>
               <input id="openaiApiKey" type="password" placeholder="sk-..." />
             </label>
-            <label class="field">
+            <label class="field field-span-2">
               <span>Model</span>
               <input id="openaiModel" type="text" placeholder="gpt-4o-mini" />
             </label>
           </div>
 
           <div class="mode-fields hidden" data-mode="minimax_bailian">
-            <div class="readonly-card">
-              <div class="label">固定 Base URL</div>
+            <div class="readonly-card field-span-2">
+              <div class="label">Base URL</div>
               <div class="mono">https://dashscope.aliyuncs.com/compatible-mode/v1</div>
             </div>
             <label class="field">
@@ -72,8 +148,8 @@
           </div>
 
           <div class="mode-fields hidden" data-mode="minimax_newapi">
-            <div class="readonly-card">
-              <div class="label">固定 Base URL</div>
+            <div class="readonly-card field-span-2">
+              <div class="label">Base URL</div>
               <div class="mono">https://api2.aigcbest.top/v1</div>
             </div>
             <label class="field">
@@ -105,13 +181,9 @@
             </label>
           </div>
 
-          <div class="actions">
+          <div class="form-footer">
+            <div class="form-note">保存前会执行一次真实连通性测试。</div>
             <button class="primary" type="submit" id="saveButton">保存并启动</button>
-            <button class="secondary" type="button" id="openChatButton">打开聊天</button>
-            <button class="secondary" type="button" id="weixinButton">微信绑定</button>
-            <button class="danger" type="button" id="stopButton">停止 Gateway</button>
-            <button class="secondary" type="button" id="restartButton">重启 Gateway</button>
-            <button class="danger" type="button" id="uninstallButton">卸载并清除数据</button>
           </div>
         </form>
       </section>
@@ -122,27 +194,27 @@
         <div class="modal-head">
           <div>
             <div class="eyebrow">WeChat</div>
-            <h2 id="weixinModalTitle">微信扫码绑定</h2>
+            <h2 id="weixinModalTitle">微信绑定</h2>
           </div>
           <button class="icon-button" type="button" id="weixinCloseButton" aria-label="关闭微信绑定弹窗">×</button>
         </div>
         <div class="modal-status">
           <div>
-            <div class="label">绑定状态</div>
+            <div class="label">状态</div>
             <div class="value small" id="weixinStateValue">idle</div>
           </div>
           <div>
-            <div class="label">最近错误</div>
+            <div class="label">错误</div>
             <div class="subtle" id="weixinErrorValue">--</div>
           </div>
         </div>
         <div class="qr-shell" id="weixinQrShell">
           <img class="qr-image hidden" id="weixinQrImage" alt="微信绑定二维码" />
-          <div class="qr-placeholder" id="weixinQrPlaceholder">点击开始绑定后，这里会显示二维码。</div>
+          <div class="qr-placeholder" id="weixinQrPlaceholder">开始绑定后，这里会显示二维码。</div>
         </div>
         <div class="actions modal-actions">
           <button class="primary" type="button" id="weixinStartButton">开始绑定</button>
-          <button class="secondary" type="button" id="weixinOpenBrowserButton">在浏览器中打开</button>
+          <button class="secondary" type="button" id="weixinOpenBrowserButton">浏览器打开</button>
           <button class="danger" type="button" id="weixinCancelButton">取消</button>
         </div>
         <pre class="log-panel" id="weixinLogs"></pre>

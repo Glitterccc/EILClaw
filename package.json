@@ -1,7 +1,7 @@
 {
   "name": "openclaw-launcher",
-  "version": "0.1.0",
-  "description": "EIL Claw is a minimal macOS launcher for OpenClaw",
+  "version": "0.1.1",
+  "description": "EIL Claw is a desktop launcher for OpenClaw",
   "author": "Codex",
   "main": "electron/main.js",
   "scripts": {
@@ -34,10 +34,7 @@
       "target": [
         "dir"
       ],
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
-      "extendInfo": {
-        "LSUIElement": true
-      }
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
       "sign": false

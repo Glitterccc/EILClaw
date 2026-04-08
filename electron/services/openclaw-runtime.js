@@ -247,6 +247,7 @@ class OpenClawRuntime extends EventEmitter {
       pid: this.readPersistedPid() || this.child?.pid || null,
       port: this.port,
       url: this.getChatUrl(),
+      recentLogs: this.logs.slice(-10),
       lastError: this.lastError,
       runtimeDir: this.runtimeDir,
       uptimeMs: this.startTime ? Date.now() - this.startTime : 0

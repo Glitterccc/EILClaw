@@ -97,11 +97,16 @@ function createWindow() {
   if (appState.window && !appState.window.isDestroyed()) return appState.window
 
   appState.window = new BrowserWindow({
-    width: 560,
-    height: 760,
+    width: 1260,
+    height: 900,
+    minWidth: 1080,
+    minHeight: 760,
     resizable: true,
     show: false,
     title: APP_DISPLAY_NAME,
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : undefined,
+    trafficLightPosition: process.platform === 'darwin' ? { x: 18, y: 20 } : undefined,
+    backgroundColor: '#07111d',
     autoHideMenuBar: true,
     icon: path.join(__dirname, '..', 'assets', 'eil-claw-logo-square.png'),
     webPreferences: {
@@ -113,6 +118,11 @@ function createWindow() {
   })
 
   appState.window.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
+  appState.window.on('close', (event) => {
+    if (appState.isQuitting || appState.isShuttingDown) return
+    event.preventDefault()
+    appState.window.hide()
+  })
   appState.window.on('closed', () => {
     if (weixinBinding.isRunning()) {
       weixinBinding.cancel().catch(() => {})
@@ -249,13 +259,7 @@ function createTray() {
   appState.tray = new Tray(image)
   appState.tray.setToolTip(APP_DISPLAY_NAME)
   appState.tray.on('click', () => {
-    if (launcherStore.hasSavedConfig()) {
-      runtime.start({ openChat: true }).catch(() => {
-        showConfigWindow('error')
-      })
-      return
-    }
-    showConfigWindow('setup')
+    showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
   })
   refreshTrayMenu()
   return appState.tray
@@ -266,8 +270,8 @@ function refreshTrayMenu() {
   const status = runtime.getStatus()
   appState.tray.setContextMenu(Menu.buildFromTemplate([
     {
-      label: `Status: ${status.status}`,
-      enabled: false
+      label: 'Open EIL Claw',
+      click: () => showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
     },
     {
       label: 'Open Chat',
@@ -399,9 +403,7 @@ ipcMain.handle('config:validateAndSave', async (_, payload) => {
     }
 
     await runtime.openChat()
-    if (appState.window && !appState.window.isDestroyed()) {
-      appState.window.hide()
-    }
+    showConfigWindow('configured')
     refreshTrayMenu()
     return {
       success: true,
@@ -417,26 +419,11 @@ ipcMain.handle('config:validateAndSave', async (_, payload) => {
 })
 
 app.on('second-instance', async () => {
-  if (!launcherStore.hasSavedConfig()) {
-    showConfigWindow('setup')
-    return
-  }
-  const result = await runtime.start({ openChat: true })
-  if (!result.success) {
-    showConfigWindow('error')
-  }
+  showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
 })
 
 app.on('activate', async () => {
-  if (!launcherStore.hasSavedConfig()) {
-    showConfigWindow('setup')
-    return
-  }
-
-  const result = await runtime.start({ openChat: true })
-  if (!result.success) {
-    showConfigWindow('error')
-  }
+  showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
 })
 
 runtime.on('status-changed', () => {
@@ -451,17 +438,17 @@ weixinBinding.on('update', (snapshot) => {
 })
 
 app.whenReady().then(async () => {
-  if (app.dock?.hide) app.dock.hide()
+  if (app.dock?.show) app.dock.show()
   createTray()
   ensureWeixinPluginCompatibility()
+  showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
 
   if (!launcherStore.hasSavedConfig()) {
-    showConfigWindow('setup')
     return
   }
 
   weixinBinding.preparePluginIfNeeded().catch(() => {})
-  const result = await runtime.start({ openChat: true })
+  const result = await runtime.start({ openChat: false })
   if (!result.success) {
     showConfigWindow('error')
   }
