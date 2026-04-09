@@ -12,7 +12,7 @@ function scanFiles(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
   const results = []
   for (const entry of entries) {
-    if (['node_modules', 'node-runtime', 'release', '.git'].includes(entry.name)) continue
+    if (['node_modules', 'node-runtime', 'release', '.git', 'local-defaults'].includes(entry.name)) continue
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) {
       results.push(...scanFiles(fullPath))

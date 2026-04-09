@@ -5,3 +5,4 @@ dist
 .DS_Store
 openclaw-state
 npm-debug.log*
+local-defaults/default-provider.json

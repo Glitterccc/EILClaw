@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, shell, dialog } = 
 const { resolveStatePaths } = require('./utils/runtime-paths')
 const { LauncherStore } = require('./services/launcher-store')
 const { resolveUserConfig } = require('./services/config-modes')
+const { resolveBundledDefaultConfig } = require('./services/bundled-default-config')
 const { validateResolvedConfig } = require('./services/connection-validator')
 const { OpenClawRuntime } = require('./services/openclaw-runtime')
 const { WeixinBindingService } = require('./services/weixin-binding')
@@ -90,6 +91,29 @@ function getBootstrapState() {
     runtimeStatus,
     weixinSnapshot: weixinBinding.getSnapshot(),
     windowReason: appState.windowReason
+  }
+}
+
+function ensureBundledDefaultConfigIfNeeded() {
+  if (launcherStore.hasSavedConfig()) {
+    return {
+      applied: false,
+      currentConfig: launcherStore.loadCurrentConfig()
+    }
+  }
+
+  const normalized = resolveBundledDefaultConfig({ app })
+  if (!normalized) {
+    return {
+      applied: false,
+      currentConfig: null
+    }
+  }
+
+  launcherStore.saveResolvedConfig(normalized)
+  return {
+    applied: true,
+    currentConfig: launcherStore.loadCurrentConfig()
   }
 }
 
@@ -441,6 +465,15 @@ app.whenReady().then(async () => {
   if (app.dock?.show) app.dock.show()
   createTray()
   ensureWeixinPluginCompatibility()
+
+  let bundledDefaultApplied = false
+  try {
+    const ensuredConfig = ensureBundledDefaultConfigIfNeeded()
+    bundledDefaultApplied = ensuredConfig.applied
+  } catch (error) {
+    appState.windowReason = 'error'
+  }
+
   showConfigWindow(launcherStore.hasSavedConfig() ? 'configured' : 'setup')
 
   if (!launcherStore.hasSavedConfig()) {
@@ -451,6 +484,11 @@ app.whenReady().then(async () => {
   const result = await runtime.start({ openChat: false })
   if (!result.success) {
     showConfigWindow('error')
+    return
+  }
+
+  if (bundledDefaultApplied) {
+    runtime.openChat().catch(() => {})
   }
 })
 

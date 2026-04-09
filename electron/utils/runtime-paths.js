@@ -30,6 +30,13 @@ function resolveBundledPluginDir({ app, isPackaged, processRef = process }, plug
   return path.join(processRef.resourcesPath, 'bundled-plugins', pluginId)
 }
 
+function resolveBundledDefaultConfigPath({ app, isPackaged, processRef = process }) {
+  if (!isPackaged) {
+    return path.join(app.getAppPath(), 'local-defaults', 'default-provider.json')
+  }
+  return path.join(processRef.resourcesPath, 'defaults', 'default-provider.json')
+}
+
 function resolveNodeExecutable(runtimeDir, platform = process.platform) {
   const candidates = platform === 'win32'
     ? [path.join(runtimeDir, 'nodejs', 'node.exe')]
@@ -111,6 +118,7 @@ module.exports = {
   resolveOpenClawEntry,
   resolveOpenClawLaunchSpec,
   resolveBundledPluginDir,
+  resolveBundledDefaultConfigPath,
   resolveRuntimeDir,
   resolveStatePaths
 }

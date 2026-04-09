@@ -83,3 +83,69 @@ test('LauncherStore.loadCurrentConfig migrates the legacy default gateway port',
   const openclawConfig = readJson(paths.openclawConfigPath)
   assert.equal(openclawConfig.gateway.port, 38789)
 })
+
+test('LauncherStore.loadCurrentConfig migrates saved gpt image support declarations', () => {
+  const userDataDir = makeTempDir()
+  const paths = resolveStatePaths(userDataDir)
+  fs.mkdirSync(paths.stateDir, { recursive: true })
+  fs.mkdirSync(paths.agentDir, { recursive: true })
+
+  writeJsonAtomic(paths.openclawConfigPath, {
+    gateway: {
+      port: 38789,
+      mode: 'local',
+      bind: 'loopback'
+    },
+    models: {
+      providers: {
+        'api-proxy-newapi': {
+          baseUrl: 'https://api2.aigcbest.top/v1',
+          api: 'openai-completions',
+          models: [
+            {
+              id: 'gpt-5.4-2026-03-05',
+              name: 'gpt-5.4-2026-03-05',
+              input: ['text']
+            }
+          ]
+        }
+      }
+    }
+  })
+  writeJsonAtomic(paths.authProfilesPath, {
+    version: 1,
+    profiles: {
+      'api-proxy-newapi:default': {
+        provider: 'api-proxy-newapi',
+        key: 'sk-test'
+      }
+    }
+  })
+  writeJsonAtomic(paths.launcherConfigPath, {
+    mode: 'minimax_newapi',
+    values: {
+      apiKey: 'sk-test',
+      model: 'gpt-5.4-2026-03-05'
+    },
+    resolved: {
+      providerId: 'api-proxy-newapi',
+      authProfileId: 'api-proxy-newapi:default',
+      baseUrl: 'https://api2.aigcbest.top/v1',
+      apiKey: 'sk-test',
+      modelId: 'gpt-5.4-2026-03-05',
+      modelName: 'gpt-5.4-2026-03-05',
+      api: 'openai-completions',
+      contextWindow: 128000,
+      maxTokens: 8192
+    }
+  })
+
+  const store = new LauncherStore(paths)
+  store.loadCurrentConfig()
+
+  const openclawConfig = readJson(paths.openclawConfigPath)
+  assert.deepEqual(
+    openclawConfig.models.providers['api-proxy-newapi'].models[0].input,
+    ['text', 'image']
+  )
+})

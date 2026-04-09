@@ -4,6 +4,21 @@ const DEFAULT_CONTEXT_WINDOW = 128000
 const DEFAULT_MAX_TOKENS = 8192
 const NEWAPI_PROVIDER_ID = 'api-proxy-newapi'
 const LEGACY_NEWAPI_PROVIDER_ID = 'api-proxy-newapi-minimax'
+const TEXT_ONLY_INPUTS = ['text']
+const TEXT_AND_IMAGE_INPUTS = ['text', 'image']
+const IMAGE_CAPABLE_MODEL_PATTERNS = [
+  /^gpt-5(?:[.-]|$)/,
+  /^gpt-4o(?:[.-]|$)/,
+  /^gpt-4\.1(?:[.-]|$)/,
+  /^gpt-4\.5(?:[.-]|$)/,
+  /^claude-3(?:[.-]|$)/,
+  /^claude-sonnet-4(?:[.-]|$)/,
+  /^claude-opus-4(?:[.-]|$)/,
+  /^gemini(?:[.-]|$)/,
+  /^glm-4(?:v|\.5v)(?:[.-]|$)/,
+  /(?:^|[-_/])vision(?:[-_/]|$)/,
+  /(?:^|[-_/])vl(?:[-_/]|$)/
+]
 const ZERO_COST = {
   input: 0,
   output: 0,
@@ -50,15 +65,109 @@ function normalizeProviderId(value) {
   return normalized
 }
 
+function normalizeModelRef(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function supportsImageInput(modelId) {
+  const normalized = normalizeModelRef(modelId)
+  if (!normalized) return false
+  return IMAGE_CAPABLE_MODEL_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
+function resolveModelInputs(modelId) {
+  return supportsImageInput(modelId) ? [...TEXT_AND_IMAGE_INPUTS] : [...TEXT_ONLY_INPUTS]
+}
+
 function createModelDefinition({ modelId, modelName, contextWindow = DEFAULT_CONTEXT_WINDOW, maxTokens = DEFAULT_MAX_TOKENS }) {
   return {
     id: modelId,
     name: modelName,
     reasoning: false,
-    input: ['text'],
+    input: resolveModelInputs(modelId),
     cost: { ...ZERO_COST },
     contextWindow,
     maxTokens
+  }
+}
+
+function migrateImageCapableModelInputs(openclawConfig) {
+  if (!openclawConfig || typeof openclawConfig !== 'object') {
+    return {
+      config: openclawConfig,
+      changed: false
+    }
+  }
+
+  const providers = openclawConfig.models?.providers
+  if (!providers || typeof providers !== 'object') {
+    return {
+      config: openclawConfig,
+      changed: false
+    }
+  }
+
+  let changed = false
+  const nextProviders = Object.fromEntries(Object.entries(providers).map(([providerId, providerConfig]) => {
+    if (!Array.isArray(providerConfig?.models)) {
+      return [providerId, providerConfig]
+    }
+
+    let providerChanged = false
+    const nextModels = providerConfig.models.map((model) => {
+      if (!model || typeof model !== 'object') {
+        return model
+      }
+
+      const modelRef = model.id || model.name
+      if (!supportsImageInput(modelRef)) {
+        return model
+      }
+
+      const expectedInputs = resolveModelInputs(modelRef)
+      const currentInputs = Array.isArray(model.input) ? model.input.map((input) => String(input)) : []
+      const matches = currentInputs.length === expectedInputs.length && currentInputs.every((input, index) => input === expectedInputs[index])
+      if (matches) {
+        return model
+      }
+
+      providerChanged = true
+      changed = true
+      return {
+        ...model,
+        input: expectedInputs
+      }
+    })
+
+    if (!providerChanged) {
+      return [providerId, providerConfig]
+    }
+
+    return [
+      providerId,
+      {
+        ...providerConfig,
+        models: nextModels
+      }
+    ]
+  }))
+
+  if (!changed) {
+    return {
+      config: openclawConfig,
+      changed: false
+    }
+  }
+
+  return {
+    config: {
+      ...openclawConfig,
+      models: {
+        ...(openclawConfig.models || {}),
+        providers: nextProviders
+      }
+    },
+    changed: true
   }
 }
 
@@ -382,7 +491,9 @@ module.exports = {
   createOpenClawConfig,
   inferCurrentConfig,
   inferModeFromResolved,
+  migrateImageCapableModelInputs,
   normalizeBaseUrl,
+  resolveModelInputs,
   normalizeProviderId,
   resolveUserConfig
 }

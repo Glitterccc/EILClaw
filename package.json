@@ -47,6 +47,10 @@
       {
         "from": "bundled-plugins",
         "to": "bundled-plugins"
+      },
+      {
+        "from": "local-defaults",
+        "to": "defaults"
       }
     ]
   },

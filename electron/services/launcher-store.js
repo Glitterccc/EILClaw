@@ -1,6 +1,6 @@
 const { DEFAULT_GATEWAY_PORT } = require('../utils/runtime-paths')
 const { readJson, writeJsonAtomic, ensureDir } = require('./file-store')
-const { createAuthProfiles, createLauncherConfig, createOpenClawConfig, inferCurrentConfig } = require('./config-modes')
+const { createAuthProfiles, createLauncherConfig, createOpenClawConfig, inferCurrentConfig, migrateImageCapableModelInputs } = require('./config-modes')
 
 const LEGACY_DEFAULT_GATEWAY_PORT = 28789
 
@@ -9,21 +9,37 @@ class LauncherStore {
     this.paths = paths
   }
 
-  migrateLegacyGatewayPort(openclawConfig) {
-    const currentPort = Number(openclawConfig?.gateway?.port)
-    if (!openclawConfig || !Number.isFinite(currentPort) || currentPort !== LEGACY_DEFAULT_GATEWAY_PORT) {
+  migrateStoredOpenClawConfig(openclawConfig) {
+    if (!openclawConfig || typeof openclawConfig !== 'object') {
       return openclawConfig
     }
 
-    const migratedConfig = {
-      ...openclawConfig,
-      gateway: {
-        ...(openclawConfig.gateway || {}),
-        port: DEFAULT_GATEWAY_PORT
+    let nextConfig = openclawConfig
+    let changed = false
+
+    const currentPort = Number(nextConfig.gateway?.port)
+    if (Number.isFinite(currentPort) && currentPort === LEGACY_DEFAULT_GATEWAY_PORT) {
+      nextConfig = {
+        ...nextConfig,
+        gateway: {
+          ...(nextConfig.gateway || {}),
+          port: DEFAULT_GATEWAY_PORT
+        }
       }
+      changed = true
     }
-    writeJsonAtomic(this.paths.openclawConfigPath, migratedConfig)
-    return migratedConfig
+
+    const inputMigration = migrateImageCapableModelInputs(nextConfig)
+    if (inputMigration.changed) {
+      nextConfig = inputMigration.config
+      changed = true
+    }
+
+    if (changed) {
+      writeJsonAtomic(this.paths.openclawConfigPath, nextConfig)
+    }
+
+    return nextConfig
   }
 
   hasSavedConfig() {
@@ -32,7 +48,7 @@ class LauncherStore {
 
   loadCurrentConfig() {
     const launcherConfig = readJson(this.paths.launcherConfigPath)
-    const openclawConfig = this.migrateLegacyGatewayPort(readJson(this.paths.openclawConfigPath))
+    const openclawConfig = this.migrateStoredOpenClawConfig(readJson(this.paths.openclawConfigPath))
     const authProfiles = readJson(this.paths.authProfilesPath)
     return inferCurrentConfig({ launcherConfig, openclawConfig, authProfiles })
   }
